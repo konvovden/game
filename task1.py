@@ -46,6 +46,8 @@ place = 0
 lose = 0
 exit = 0
 
+equiped_weapon = 0
+
 inventory = []
 
 
@@ -59,6 +61,7 @@ def LoadPlayer(file):
 	global inventory
 	global place
 	global move
+	global money
 	file_content = file.read()
 	file_list = file_content.split('|')
 	a[0] = file_list[0]
@@ -74,10 +77,9 @@ def LoadPlayer(file):
 	score = int(file_list[10])
 	place = int(file_list[11])
 	move = int(file_list[12])
+	money = int(file_list[14])
 	if(len(file_list[13]) != 2):
-		 inventory_array = file_list[13].split(',')
-		 inventory_array[0] = int(str(inventory_array[0]).replace('[', ''))
-		 inventory_array[len(inventory_array)-1] = int(str(inventory_array[len(inventory_array)-1]).replace(']', ''))
+		 inventory_array = file_list[13].replace('[', '').replace(']', '').split(',')
 		 for i in range(len(inventory_array)):
 		 	inventory.append(int(inventory_array[i]))
 
@@ -114,6 +116,7 @@ def SavePlayer():
 	file_list.append(place)
 	file_list.append(move)
 	file_list.append(inventory)
+	file_list.append(money)
 
 	file_content = ''
 	for i in range(len(file_list)):
@@ -137,12 +140,17 @@ def CreatePlayer():
 	SavePlayer()
 
 def ShowInventory():
+	global equiped_weapon
+	global inventory
+	os.system('cls')
 	while True:
-		os.system('cls')
 		print(InfoText() + 'Ваш инвентарь: \n')
 		if len(inventory):
 			for i in range(len(inventory)):
-					print(str(i+1) + '. ' + inventory_item_names[inventory[i]])
+				if(inventory[i] != equiped_weapon):
+					print(str(i+1) + '. ' + GetItemPowerColor(GetItemPower(inventory[i])) + GetItemName(inventory[i]) + ' (+' + str(GetItemPower(inventory[i])) + ' урона)' + Style.RESET_ALL)
+				else:
+					print(str(i+1) + '. ' + Fore.CYAN + GetItemName(inventory[i]) + ' (+' + str(GetItemPower(inventory[i])) + ' урона)' + Style.RESET_ALL)
 		print(str(len(inventory)+1) + '. Назад')
 		action = input('Введите номер предмета для использования: ')
 		if action.isdigit() == False and action != 'exit':
@@ -163,8 +171,21 @@ def InfoText() -> str:
 	return '[' + Fore.YELLOW + 'i' + Style.RESET_ALL + '] ' 
 
 def UseItem(slot):
-	if inventory[slot] == 0 or inventory[slot] == 1:
-		print(InfoText() + 'Данный предмет нельзя использовать!')
+	global inventory
+	global equiped_weapon
+	if (inventory[slot] > 1000000) and (inventory[slot] < 2000000):
+		if equiped_weapon != inventory[slot]:
+			equiped_weapon = inventory[slot]
+			CalculatePlayerDamage()
+			os.system('cls')
+			print(InfoText() + "Вы экипировали оружие '" + GetItemPowerColor(GetItemPower(inventory[slot])) + GetItemName(inventory[slot]) + Style.RESET_ALL + "'.")
+		else:
+			equiped_weapon = 0
+			CalculatePlayerDamage()
+			os.system('cls')
+			print(InfoText() + "Вы убрали из рук оружие '" + GetItemPowerColor(GetItemPower(inventory[slot])) + GetItemName(inventory[slot]) + Style.RESET_ALL + "'.")
+
+
 
 locations = ['Деревня питонистов', 'Торговая лавка', 'Деревня орков']
 
@@ -205,8 +226,8 @@ def ShowLocations(without):
 def CalculatePlayerDamage():
 	global damage
 	global inventory
-	if 1 in inventory:
-		damage += 5
+	if(equiped_weapon != 0):
+		damage += GetItemPower(equiped_weapon)
 def CalculateMobDamage() -> int:
 	global inventory
 	global move
@@ -395,8 +416,7 @@ def GetItemName(itemid) -> str:
 	global items_names_names
 	global items_names_rates
 
-	itemid = itemid % 1000000
-	propertyid = itemid // 10000
+	propertyid = (itemid // 10000) % 100
 	charactid = (itemid // 100) % 100
 	namesid = itemid % 100
 
@@ -426,6 +446,22 @@ def GetItemPower(itemid) -> int:
 	power *= items_charact_rates[charactid]
 	power += items_names_rates[namesid]
 	return int(power)
+
+def GetItemPowerColor(power) -> str:
+	global items_properties_rates
+	max_ = 0
+	min_ = 10000000
+	for i in range(len(items_properties_rates)):
+		if items_properties_rates[i] > max_: 
+			max_ = items_properties_rates[i]
+		if items_properties_rates[i] < min_:
+			min_ = items_properties_rates[i]
+	if (power <= (max_ - min_) // 3):
+		return Fore.RED
+	elif (power <= (max_ - min_) // 3 *2):
+		return Fore.YELLOW
+	else:
+		return Fore.GREEN
 
 def GenerateNewItem() -> int:
 	returned = '1'
@@ -514,13 +550,15 @@ while True:
 			elif shop_stage == 1:
 				print('Ты зашёл внутрь и заговорил с торговцем.\n')
 				print(Fore.YELLOW, '- Что ты желаешь купить?')
-				for i in range(len(shop_buy_item_prices)):
-					print(Style.RESET_ALL + str(i+1)+'. ' + str(shop_buy_item_names[i]), end = '\t')
-					if(money >= shop_buy_item_prices[i]):
-						print(Fore.GREEN + str(shop_buy_item_prices[i]))
+				items = []
+				for i in range(3):
+					items.append(GenerateNewItem())
+					print(Style.RESET_ALL + str(i+1)+'. ' + GetItemPowerColor(GetItemPower(items[i])) + GetItemName(items[i]) + ' (+ ' + str(GetItemPower(items[i])) + ' урона)', end = '\t\t\t')
+					if(money >= int(2.28*GetItemPower(items[i]))):
+						print(Fore.GREEN + str(int(2.28*GetItemPower(items[i]))))
 					else:
-						print(Fore.RED + str(shop_buy_item_prices[i]))
-				print(Style.RESET_ALL + str(len(shop_buy_item_prices)+1) + '. Назад')
+						print(Fore.RED + str(int(2.28*GetItemPower(items[i]))))
+				print(Style.RESET_ALL + '3. Назад')
 				print(Style.RESET_ALL + 'Введите желаемый предмет: ')
 				item = input()
 				if item.isdigit() == False and item != 'exit':
@@ -528,22 +566,22 @@ while True:
 					print(Fore.RED + 'Введите число!\n\n' + Style.RESET_ALL)
 				elif item == 'exit':
 					exit = 1
+					break
 				else:
-					if(item == len(shop_buy_item_prices)+1):
+					item = int(item)
+					if(item == 3):
 						shop_stage = 0
 						os.system('cls')
 						continue
-					elif(shop_buy_item_prices[item-1] > money):
+					elif(int(2.28*GetItemPower(items[item-1])) > money):
 						os.system('cls')
 						print(Fore.RED + 'У Вас недостаточно денег для покупки предмета!\n' + Style.RESET_ALL)
-					elif(item == 1 or item == 2) and item-1 in inventory:
-						os.system('cls')
-						print(Fore.RED + 'У Вас уже есть этот предмет!\n' + Style.RESET_ALL)
 					else:
-						inventory.append(item-1)
-						money -= shop_buy_item_prices[item-1]
+						inventory.append(items[item-1])
+						money -= int(2.28*GetItemPower(items[item-1]))
 						os.system('cls')
-						print(Fore.GREEN +"Вы купили предмет '" + shop_buy_item_names[item-1] + "'.\n" + Style.RESET_ALL)
+						print(Fore.GREEN +"Вы купили предмет '" + GetItemName(items[item-1]) + "' за " + str(int(2.28*GetItemPower(items[item-1]))) + ".\n" + Style.RESET_ALL)
+						items[item-1] = GenerateNewItem()
 			elif shop_stage == 2:
 				print('Ты зашёл внутрь и заговорил с торговцем.')
 				print(Fore.YELLOW, '- Что ты желаешь продать?' + Style.RESET_ALL)
