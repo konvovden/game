@@ -41,6 +41,8 @@ health = 100
 damage = 5
 money = 0
 
+player_pos = [30,10]
+
 place = 0
 
 lose = 0
@@ -505,8 +507,72 @@ def GenerateNewMob():
 	mob_damage = randint(int(mob_level*2.5), mob_level*5)
 	mob_health = randint(mob_level*25, mob_level*50)
 
+levels = []
+LEVELS_COUNT = 0
 
-# def Generate
+def LoadLevels():
+	global levels
+	global LEVELS_COUNT
+	i = 0
+	while True:
+		i += 1
+		if(os.path.isfile('levels/'+str(i)+'.txt')):
+			LEVELS_COUNT += 1
+			levels.append([])
+
+			file = open('levels/' + str(i) + '.txt', 'r')
+			file_content = file.read()
+			levels[LEVELS_COUNT-1] = file_content.split('\n')
+
+			file.close()
+		else:
+			break
+
+def ShowLevel(levelid):
+	global levels
+	global LEVELS_COUNT
+	if levelid > LEVELS_COUNT:
+		print(Fore.RED + 'Ошибка! Номер уровня больше максимального!' + Style.RESET_ALL)
+		return
+	levelid -= 1
+	for i in range(len(levels[levelid])):
+		string = ' ' * 10
+		for j in range(len(levels[levelid][i])):
+			string += GetBlockSymbol(int(levels[levelid][i][j]))
+		print(string)
+
+		# string = ' ' * 10
+		# string += levels[levelid][i]
+		# print(string)
+
+def GetBlockSymbol(blocknum) -> str:
+	returned = ''
+	if blocknum == 0:
+		returned = ' '
+	elif blocknum == 1:
+		returned = Fore.WHITE + Style.DIM + '#' + Style.RESET_ALL
+	elif blocknum == 2:
+		returned = Fore.BLUE + Style.BRIGHT + '@' + Style.RESET_ALL
+	return returned
+
+def UpdateLevel(levelid):
+	global levels
+	global player_pos
+	player_pos = [10, 30]
+	levelid = levelid - 1
+	while True:
+		levels[levelid][player_pos[0]][player_pos[1]] = 2
+		ShowLevel(levelid)
+		input()
+		break
+
+
+
+
+LoadLevels()
+UpdateLevel(1)
+
+sys.exit()
 
 LoadItems()
 
