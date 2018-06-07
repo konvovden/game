@@ -47,6 +47,11 @@ lose = 0
 exit = 0
 
 equiped_weapon = 0
+equiped_weapon_slot = -1
+
+mob_damage = 0
+mob_health = 0
+mob_level = 0
 
 inventory = []
 
@@ -141,13 +146,15 @@ def CreatePlayer():
 
 def ShowInventory():
 	global equiped_weapon
+	global equiped_weapon_slot
 	global inventory
+	global exit
 	os.system('cls')
 	while True:
 		print(InfoText() + 'Ваш инвентарь: \n')
 		if len(inventory):
 			for i in range(len(inventory)):
-				if(inventory[i] != equiped_weapon):
+				if(i != equiped_weapon_slot):
 					print(str(i+1) + '. ' + GetItemPowerColor(GetItemPower(inventory[i])) + GetItemName(inventory[i]) + ' (+' + str(GetItemPower(inventory[i])) + ' урона)' + Style.RESET_ALL)
 				else:
 					print(str(i+1) + '. ' + Fore.CYAN + GetItemName(inventory[i]) + ' (+' + str(GetItemPower(inventory[i])) + ' урона)' + Style.RESET_ALL)
@@ -173,14 +180,18 @@ def InfoText() -> str:
 def UseItem(slot):
 	global inventory
 	global equiped_weapon
-	if (inventory[slot] > 1000000) and (inventory[slot] < 2000000):
-		if equiped_weapon != inventory[slot]:
+	global equiped_weapon_slot
+	if (inventory[slot] >= 1000000) and (inventory[slot] <= 2000000):
+		if equiped_weapon_slot != slot:
 			equiped_weapon = inventory[slot]
+			equiped_weapon_slot = slot
+
 			CalculatePlayerDamage()
 			os.system('cls')
 			print(InfoText() + "Вы экипировали оружие '" + GetItemPowerColor(GetItemPower(inventory[slot])) + GetItemName(inventory[slot]) + Style.RESET_ALL + "'.")
 		else:
 			equiped_weapon = 0
+			equiped_weapon_slot = -1
 			CalculatePlayerDamage()
 			os.system('cls')
 			print(InfoText() + "Вы убрали из рук оружие '" + GetItemPowerColor(GetItemPower(inventory[slot])) + GetItemName(inventory[slot]) + Style.RESET_ALL + "'.")
@@ -193,6 +204,7 @@ def ShowLocations(without):
 	global locations
 	global place
 	global exit
+	global move
 	temp_locations = locations.copy()
 	temp_locations_nums = []
 	for i in range(len(temp_locations)):
@@ -226,14 +238,14 @@ def ShowLocations(without):
 def CalculatePlayerDamage():
 	global damage
 	global inventory
+	damage = skills[0]*2.5
 	if(equiped_weapon != 0):
 		damage += GetItemPower(equiped_weapon)
+	damage = int(damage)
 def CalculateMobDamage() -> int:
 	global inventory
 	global move
-	mob_damage = randint(1+int(round(0.1*move)), 6+int(round(0.1*move)))
-	if (0 in inventory): 
-		mob_damage -= int(round(0.2*mob_damage))
+	mob_damage = randint(1+int(round(0.3*move)), 10+int(round(0.3*move)))
 	return mob_damage
 
 def ShowCharacterMenu():
@@ -482,10 +494,22 @@ def GenerateNewItem() -> int:
 	returned += gen
 	return int(returned)
 
+def GenerateNewMob():
+	global mob_damage
+	global mob_health
+	global mob_level
+	global level
+	global move
+
+	mob_level = randint(1+int(move*0.5), 10+int(move*0.5))
+	mob_damage = randint(int(mob_level*2.5), mob_level*5)
+	mob_health = randint(mob_level*25, mob_level*50)
+
+
+# def Generate
+
 LoadItems()
 
-item = GenerateNewItem()
-print(str(item) + ' ' + GetItemName(item) + ' ' + str(GetItemPower(item)))
 
 
 if os.path.isfile('save.txt'):
@@ -587,7 +611,9 @@ while True:
 				print(Fore.YELLOW, '- Что ты желаешь продать?' + Style.RESET_ALL)
 				if len(inventory) != 0:
 					for i in range(len(inventory)):
-						print(Style.RESET_ALL + str(i+1) + '. ' + inventory_item_names[inventory[i]] + '\t\t' + Fore.GREEN + str(inventory_item_prices[inventory[i]]) + Style.RESET_ALL)
+						# print(Style.RESET_ALL + str(i+1) + '. ' + inventory_item_names[inventory[i]] + '\t\t' + Fore.GREEN + str(inventory_item_prices[inventory[i]]) + Style.RESET_ALL)
+						if inventory[i] >= 1000000 and inventory[i] <= 1999999:
+							print(str(i+1) + '. ' + GetItemPowerColor(GetItemPower(inventory[i])) + GetItemName(inventory[i]) + ' (+ ' + str(GetItemPower(inventory[i])) + ' урона)\t\t\t' + Fore.GREEN + str(int(2*GetItemPower(inventory[i]))) + Style.RESET_ALL)
 				print(str(len(inventory)+1) + '. Назад')
 				print('Введите желаемый предмет: ')
 				item = input()
@@ -596,6 +622,7 @@ while True:
 					print(Fore.RED + 'Введите число!\n\n' + Style.RESET_ALL)
 				elif item == 'exit':
 					exit = 1
+					break
 				else:
 					item = int(item)-1
 					if item == len(inventory):
@@ -609,7 +636,7 @@ while True:
 	elif place == 2:
 		if move != 0:
 			print(InfoText() + 'Вы прошли по локации уже ' + str(move*10) + ' шагов.')
-		print('Доступные действия: \n1. Пойти дальше\n2. Инвентарь\n3. Персонаж\n4. Переместиться в...')
+		print('Доступные действия: \n1. Войти в подземелье\n2. Инвентарь\n3. Персонаж\n4. Переместиться в...')
 		action = input('Введите желаемое действие: ')
 		if action.isdigit() == False and action != 'exit':
 			os.system('cls')
@@ -644,9 +671,9 @@ while True:
 									print(Fore.RED + 'Вы ничего не нашли!\n' + Style.RESET_ALL)
 									break
 								elif loot == 1:
-									lootamount = randint(1, 15)
+									lootamount = randint(1, 100)
 									money += lootamount
-									print(Fore.GREEN + 'Вы нашли золото! Деньги +' + str(lootamount) + ' (' + str(money) + ').\n')
+									print(Fore.GREEN + 'Вы нашли золото! Деньги +' + str(lootamount) + ' (' + str(money) + ').\n' + Style.RESET_ALL)
 									break
 							elif action == 2:
 								os.system('cls')
@@ -656,10 +683,11 @@ while True:
 				elif mobnum == 2:
 					os.system('cls')
 					cicle_exit = 0
+					GenerateNewMob()
 					while True:
 						if cicle_exit != 0:
 							break
-						print(InfoText() + 'Вы столкнулись с орком!\n')
+						print(InfoText() + 'Вы столкнулись с орком! Уровень: ' + Fore.RED + str(mob_level) + Style.RESET_ALL + '\n')
 						print('Доступные действия:\n1. Сразиться\n2. Убежать')
 						action = input('Введите желаемое действие: ')
 						if action.isdigit() == False and action != 'exit':
@@ -685,9 +713,6 @@ while True:
 									break
 							else:
 								os.system('cls')
-								mob_health = randint(75+int(round(move * 0.5)), 150+int(round(move * 0.5)))
-								mob_damage = CalculateMobDamage()
-								first_health = health
 								while True:
 									if mob_health <= 0:
 										score += 5
